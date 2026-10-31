@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SK TRAVELS - Owner Command & Control Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        obsidian: '#05070A',
+                        cardBg: '#0E131F',
+                        gold: {
+                            400: '#FACC15',
+                            500: '#EAB308',
+                            600: '#CA8A04',
+                        },
+                        emeraldAccent: '#10B981',
+                        cyanAccent: '#06B6D4'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & Lucide Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Leaflet.js CSS & JS for Interactive Map Radar -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #05070A;
+            color: #F8FAFC;
+        }
+        .glass-panel {
+            background: rgba(14, 19, 31, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-panel-gold {
+            background: rgba(234, 179, 8, 0.06);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(234, 179, 8, 0.25);
+        }
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #FFF5C0 0%, #EAB308 50%, #CA8A04 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+        #radar-map {
+            width: 100%;
+            height: 420px;
+            border-radius: 1.25rem;
+            z-index: 10;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #05070A; }
+        ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #EAB308; }
+    </style>
+</head>
+<body class="relative min-h-screen flex flex-col justify-between selection:bg-gold-500 selection:text-black">
+
+    <!-- Particle Background Canvas -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- HEADER / NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 w-full glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-gold-600 to-gold-400 flex items-center justify-center text-black font-extrabold text-xl shadow-lg shadow-gold-500/20">
+                    SK
+                </div>
+                <div>
+                    <span class="text-xl font-bold tracking-wider text-white block leading-tight">SK TRAVELS</span>
+                    <span class="text-[10px] uppercase tracking-widest text-gold-400 font-semibold flex items-center space-x-1">
+                        <i data-lucide="shield" class="w-3 h-3 inline"></i>
+                        <span>Owner Command Center</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Tab Navigation Buttons -->
+            <nav class="hidden md:flex items-center space-x-1 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-4 py-2 rounded-xl text-xs font-semibold transition text-gold-400 bg-slate-800">
+                    Dashboard
+                </button>
+                <button onclick="switchTab('bookings')" id="nav-bookings" class="px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white">
+                    Bookings
+                </button>
+                <button onclick="switchTab('fleet')" id="nav-fleet" class="px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white">
+                    Fleet Inventory
+                </button>
+                <button onclick="switchTab('drivers')" id="nav-drivers" class="px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white">
+                    Drivers Roster
+                </button>
+                <button onclick="switchTab('telemetry')" id="nav-telemetry" class="px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white">
+                    Live GPS Radar
+                </button>
+                <button onclick="switchTab('settings')" id="nav-settings" class="px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white">
+                    Settings
+                </button>
+            </nav>
+
+            <div class="flex items-center space-x-3">
+                <div class="hidden sm:flex flex-col text-right">
+                    <span class="text-xs font-semibold text-white">Owner Admin</span>
+                    <span class="text-[10px] text-emeraldAccent flex items-center justify-end space-x-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>System Online</span>
+                    </span>
+                </div>
+                <button onclick="resetSystemData()" title="Reset to Sample Data" class="p-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-gold-500/50 text-slate-400 hover:text-gold-400 transition">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Menu Dropdown -->
+        <div class="md:hidden flex overflow-x-auto p-2 border-t border-slate-800 space-x-2 text-xs">
+            <button onclick="switchTab('dashboard')" class="px-3 py-1.5 rounded-lg bg-slate-800 text-gold-400 font-medium whitespace-nowrap">Dashboard</button>
+            <button onclick="switchTab('bookings')" class="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 font-medium whitespace-nowrap">Bookings</button>
+            <button onclick="switchTab('fleet')" class="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 font-medium whitespace-nowrap">Fleet</button>
+            <button onclick="switchTab('drivers')" class="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 font-medium whitespace-nowrap">Drivers</button>
+            <button onclick="switchTab('telemetry')" class="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 font-medium whitespace-nowrap">GPS Radar</button>
+            <button onclick="switchTab('settings')" class="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 font-medium whitespace-nowrap">Settings</button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="relative z-10 flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- SECTION 1: DASHBOARD -->
+        <section id="section-dashboard" class="space-y-8">
+            <!-- Header Greeting & Quick Actions -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Command Dashboard</h1>
+                    <p class="text-xs text-slate-400 mt-1">Real-time overview of SK TRAVELS fleet, revenue, and ride operations.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="openAddCarModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs flex items-center space-x-1.5">
+                        <i data-lucide="plus" class="w-4 h-4 text-gold-400"></i>
+                        <span>Add Car</span>
+                    </button>
+                    <button onclick="openAddDriverModal()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs flex items-center space-x-1.5">
+                        <i data-lucide="user-plus" class="w-4 h-4 text-gold-400"></i>
+                        <span>Register Driver</span>
+                    </button>
+                    <button onclick="openManualBookingModal()" class="px-3.5 py-2 rounded-xl bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs flex items-center space-x-1.5 shadow-lg shadow-gold-500/20">
+                        <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+                        <span>Manual Ride Booking</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Metric Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- Revenue Card -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-800 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs uppercase font-semibold text-slate-400">Total Revenue</span>
+                            <h3 id="kpi-revenue" class="text-2xl font-extrabold text-gold-400 mt-1">₹0</h3>
+                        </div>
+                        <div class="p-3 bg-gold-500/10 text-gold-400 rounded-xl">
+                            <i data-lucide="indian-rupee" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-3 flex items-center">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5 text-emerald-400 mr-1"></i>
+                        Calculated from all completed bookings
+                    </p>
+                </div>
+
+                <!-- Active Rides -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs uppercase font-semibold text-slate-400">Active / En-Route Rides</span>
+                            <h3 id="kpi-active-rides" class="text-2xl font-extrabold text-cyanAccent mt-1">0</h3>
+                        </div>
+                        <div class="p-3 bg-cyanAccent/10 text-cyanAccent rounded-xl">
+                            <i data-lucide="navigation" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-3 flex items-center">
+                        <i data-lucide="activity" class="w-3.5 h-3.5 text-cyanAccent mr-1"></i>
+                        Rides currently in transit
+                    </p>
+                </div>
+
+                <!-- Fleet Utilization -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs uppercase font-semibold text-slate-400">Fleet Utilization</span>
+                            <h3 id="kpi-utilization" class="text-2xl font-extrabold text-white mt-1">0%</h3>
+                        </div>
+                        <div class="p-3 bg-emeraldAccent/10 text-emeraldAccent rounded-xl">
+                            <i data-lucide="car" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                        <div id="kpi-utilization-bar" class="bg-emeraldAccent h-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Drivers On Duty -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-800">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs uppercase font-semibold text-slate-400">Chauffeurs Active</span>
+                            <h3 id="kpi-drivers-duty" class="text-2xl font-extrabold text-white mt-1">0 / 0</h3>
+                        </div>
+                        <div class="p-3 bg-purple-500/10 text-purple-400 rounded-xl">
+                            <i data-lucide="users" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-3 flex items-center">
+                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-purple-400 mr-1"></i>
+                        Chauffeurs on duty roster
+                    </p>
+                </div>
+            </div>
+
+            <!-- Recent Bookings Quick Table -->
+            <div class="glass-panel rounded-2xl p-5 border border-slate-800 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                        <i data-lucide="clock" class="w-5 h-5 text-gold-400"></i>
+                        <span>Recent Booking Activity</span>
+                    </h2>
+                    <button onclick="switchTab('bookings')" class="text-xs text-gold-400 hover:underline">View All Bookings &rarr;</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/80 text-slate-400 uppercase tracking-wider text-[10px]">
+                            <tr>
+                                <th class="p-3 rounded-l-xl">Booking ID</th>
+                                <th class="p-3">Customer</th>
+                                <th class="p-3">Route</th>
+                                <th class="p-3">Vehicle</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3 rounded-r-xl">Total Fare</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-recent-bookings-tbody" class="divide-y divide-slate-800/50">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: BOOKINGS MANAGEMENT ENGINE -->
+        <section id="section-bookings" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-white">Booking Management Engine</h2>
+                    <p class="text-xs text-slate-400">Manage, assign chauffeurs, update status, or cancel ride reservations.</p>
+                </div>
+                <button onclick="openManualBookingModal()" class="px-4 py-2 rounded-xl bg-gold-500 text-black font-bold text-xs flex items-center space-x-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Create Manual Reservation</span>
+                </button>
+            </div>
+
+            <!-- Search & Filter Controls -->
+            <div class="glass-panel p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <div class="relative w-full sm:w-80">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                    <input type="text" id="booking-search-input" onkeyup="renderBookingsTable()" placeholder="Search ID, Customer, Phone..." class="w-full bg-slate-900/90 border border-slate-700 rounded-xl py-2 pl-10 pr-4 text-xs text-white focus:outline-none focus:border-gold-500">
+                </div>
+                <div class="flex items-center space-x-2 w-full sm:w-auto">
+                    <select id="booking-status-filter" onchange="renderBookingsTable()" class="bg-slate-900/90 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-gold-500">
+                        <option value="ALL">All Booking Statuses</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="En-Route">En-Route</option>
+                        <option value="In-Transit">In-Transit</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Full Bookings Table -->
+            <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/90 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                            <tr>
+                                <th class="p-3.5">ID</th>
+                                <th class="p-3.5">Customer & Contact</th>
+                                <th class="p-3.5">Trip Details</th>
+                                <th class="p-3.5">Vehicle Choice</th>
+                                <th class="p-3.5">Assigned Driver</th>
+                                <th class="p-3.5">Fare</th>
+                                <th class="p-3.5">Status</th>
+                                <th class="p-3.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookings-table-tbody" class="divide-y divide-slate-800/60">
+                            <!-- Injected via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: FLEET INVENTORY MANAGER -->
+        <section id="section-fleet" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-white">Vehicle Fleet Inventory</h2>
+                    <p class="text-xs text-slate-400">Add, edit pricing, update maintenance status, or trigger seasonal surge multipliers.</p>
+                </div>
+                <button onclick="openAddCarModal()" class="px-4 py-2 rounded-xl bg-gold-500 text-black font-bold text-xs flex items-center space-x-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Add New Vehicle</span>
+                </button>
+            </div>
+
+            <!-- Dynamic Fleet Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="fleet-inventory-grid">
+                <!-- Fleet Cards Injected Here -->
+            </div>
+        </section>
+
+        <!-- SECTION 4: DRIVERS ROSTER MANAGER -->
+        <section id="section-drivers" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-white">Chauffeur & Driver Roster</h2>
+                    <p class="text-xs text-slate-400">Manage chauffeur profiles, duty status, assigned vehicles, and authentication PINs.</p>
+                </div>
+                <button onclick="openAddDriverModal()" class="px-4 py-2 rounded-xl bg-gold-500 text-black font-bold text-xs flex items-center space-x-2">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    <span>Register New Driver</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="drivers-roster-grid">
+                <!-- Driver Cards Injected Here -->
+            </div>
+        </section>
+
+        <!-- SECTION 5: LIVE GPS TELEMETRY MAP RADAR -->
+        <section id="section-telemetry" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-white">Live Telemetry & GPS Tracking Radar</h2>
+                    <p class="text-xs text-slate-400">Simulated real-time vehicle monitoring across Gujarat highway routes.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                    <span class="text-xs text-emerald-400 font-semibold">GPS Feed Active</span>
+                </div>
+            </div>
+
+            <!-- Interactive Map Container -->
+            <div class="glass-panel p-4 rounded-3xl border border-slate-800 space-y-4">
+                <div id="radar-map"></div>
+
+                <!-- Active Trip Telemetry Teleprinter -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs pt-2">
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Tracked Vehicle</span>
+                        <span class="text-white font-semibold block text-sm mt-0.5" id="tele-car">Innova Crysta (GJ-07-SK-8899)</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Route Velocity & Speed</span>
+                        <span class="text-gold-400 font-semibold block text-sm mt-0.5" id="tele-speed">68 km/h (Cruising NE1 Express)</span>
+                    </div>
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Est. Time to Destination</span>
+                        <span class="text-emeraldAccent font-semibold block text-sm mt-0.5" id="tele-eta">28 Minutes</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 6: BUSINESS SETTINGS & CREDENTIALS -->
+        <section id="section-settings" class="hidden space-y-6">
+            <div>
+                <h2 class="text-2xl font-extrabold text-white">Business Settings & Security</h2>
+                <p class="text-xs text-slate-400">Configure owner contact information, operational settings, and export system records.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Business Credentials -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider text-gold-400 border-b border-slate-800 pb-2">Business Profile</h3>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Company Helpline Phone</label>
+                        <input type="text" id="setting-phone" value="+91 9898710612" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Contact Email Address</label>
+                        <input type="email" id="setting-email" value="naitikchavda045@gmail.com" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Primary Headquarters</label>
+                        <input type="text" id="setting-address" value="Anand & Vadodara Hubs, Gujarat, India" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl py-2 px-3 text-xs text-white">
+                    </div>
+
+                    <button onclick="saveSettings()" class="w-full py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-black font-bold text-xs">
+                        Save Business Settings
+                    </button>
+                </div>
+
+                <!-- Backup & Export Tools -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider text-cyanAccent border-b border-slate-800 pb-2">Data Export & Backup</h3>
+                    
+                    <p class="text-xs text-slate-400">Export booking logs, vehicle maintenance lists, and chauffeur records in standard JSON/CSV format for accounting.</p>
+
+                    <div class="space-y-2 pt-2">
+                        <button onclick="exportBookingsJSON()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs flex items-center justify-center space-x-2">
+                            <i data-lucide="download" class="w-4 h-4 text-gold-400"></i>
+                            <span>Export Bookings Data (JSON)</span>
+                        </button>
+                        <button onclick="resetSystemData()" class="w-full py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-semibold text-xs flex items-center justify-center space-x-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            <span>Reset System Local Data to Defaults</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: ADD / EDIT VEHICLE -->
+    <div id="modal-car" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-slate-700 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-white" id="modal-car-title">Add New Luxury Vehicle</h3>
+                <button onclick="closeModal('modal-car')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-car" onsubmit="handleCarSubmit(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="car-form-id">
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Vehicle Model & Name</label>
+                    <input type="text" id="car-name" required placeholder="e.g. Innova Crysta" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Rate per KM (₹)</label>
+                        <input type="number" id="car-rate" required placeholder="20" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Seating Capacity</label>
+                        <input type="number" id="car-seats" required placeholder="7" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Category</label>
+                        <select id="car-category" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                            <option value="Sedan">Sedan</option>
+                            <option value="SUV">SUV</option>
+                            <option value="Luxury SUV">Luxury SUV</option>
+                            <option value="Luxury Coach">Luxury Coach</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Status</label>
+                        <select id="car-status" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                            <option value="Available">Available</option>
+                            <option value="Maintenance">In Maintenance</option>
+                            <option value="Rented">Rented / On Trip</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Image URL</label>
+                    <input type="url" id="car-image" required placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('modal-car')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-gold-500 text-black font-bold">Save Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADD / EDIT DRIVER -->
+    <div id="modal-driver" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-slate-700 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-white">Register Chauffeur / Driver</h3>
+                <button onclick="closeModal('modal-driver')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-driver" onsubmit="handleDriverSubmit(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Driver Full Name</label>
+                    <input type="text" id="driver-name" required placeholder="e.g. Ramesh Patel" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Mobile Phone</label>
+                        <input type="tel" id="driver-phone" required placeholder="+91 9898710612" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Duty PIN</label>
+                        <input type="text" id="driver-pin" required placeholder="1234" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Vehicle License Plate</label>
+                        <input type="text" id="driver-plate" required placeholder="GJ-07-SK-8899" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Duty Status</label>
+                        <select id="driver-status" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                            <option value="Active">On Duty / Active</option>
+                            <option value="On Trip">On Trip</option>
+                            <option value="Off Duty">Off Duty</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('modal-driver')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-gold-500 text-black font-bold">Register Driver</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: MANUAL BOOKING CREATOR -->
+    <div id="modal-manual-booking" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-slate-700 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-white">Manual / Phone Booking Creator</h3>
+                <button onclick="closeModal('modal-manual-booking')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-manual-booking" onsubmit="handleManualBookingSubmit(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Customer Full Name</label>
+                    <input type="text" id="manual-name" required placeholder="Client Name" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Customer Phone</label>
+                        <input type="tel" id="manual-phone" required placeholder="+91 98987..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Est. Total Fare (₹)</label>
+                        <input type="number" id="manual-fare" required placeholder="1800" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Pickup Location</label>
+                        <input type="text" id="manual-pickup" required placeholder="Anand" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">Drop Location</label>
+                        <input type="text" id="manual-drop" required placeholder="AMD Airport" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Select Vehicle Choice</label>
+                    <select id="manual-vehicle" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('modal-manual-booking')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-gold-500 text-black font-bold">Create Reservation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="relative z-10 glass-panel border-t border-slate-800/80 mt-12 py-6 text-center text-xs text-slate-500">
+        <p>© 2026 SK TRAVELS Owner Command Center. All operations secured.</p>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- SEEDED DEFAULT SYSTEM DATA ---
+        const DEFAULT_FLEET = [
+            { id: 'car-1', name: 'Swift Dzire / Etios', category: 'Sedan', ratePerKm: 12, seats: 4, status: 'Available', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80' },
+            { id: 'car-2', name: 'Ertiga / XL6', category: 'SUV', ratePerKm: 16, seats: 6, status: 'Available', image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=600&q=80' },
+            { id: 'car-3', name: 'Innova Crysta', category: 'Luxury SUV', ratePerKm: 20, seats: 7, status: 'Rented', image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=600&q=80' }
+        ];
+
+        const DEFAULT_DRIVERS = [
+            { id: 'drv-1', name: 'Ramesh Patel', phone: '+91 9898710612', plate: 'GJ-07-SK-8899', pin: '1234', status: 'On Trip' },
+            { id: 'drv-2', name: 'Suresh Chavda', phone: '+91 9898710613', plate: 'GJ-01-SK-1002', pin: '5678', status: 'Active' }
+        ];
+
+        const DEFAULT_BOOKINGS = [
+            {
+                id: 'SK-1001',
+                customerName: 'Rahul Patel',
+                phone: '+91 9898710612',
+                pickup: 'Anand Junction',
+                drop: 'Ahmedabad Airport (AMD)',
+                datetime: '2026-10-30 08:00 AM',
+                vehicle: 'Innova Crysta',
+                driver: 'Ramesh Patel',
+                status: 'In-Transit',
+                fare: 1700
+            },
+            {
+                id: 'SK-1002',
+                customerName: 'Priya Sharma',
+                phone: '+91 9426011223',
+                pickup: 'Vadodara Station',
+                drop: 'Statue of Unity',
+                datetime: '2026-10-31 09:30 AM',
+                vehicle: 'Ertiga / XL6',
+                driver: 'Suresh Chavda',
+                status: 'Confirmed',
+                fare: 1440
+            }
+        ];
+
+        // --- LOCAL STORAGE DATA ENGINE ---
+        function getStoredData(key, fallback) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : fallback;
+            } catch (e) { return fallback; }
+        }
+
+        function setStoredData(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        let fleet = getStoredData('sk_cars', DEFAULT_FLEET);
+        let drivers = getStoredData('sk_drivers', DEFAULT_DRIVERS);
+        let bookings = getStoredData('sk_bookings', DEFAULT_BOOKINGS);
+
+        let map = null;
+        let mapMarker = null;
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initCanvas();
+            renderDashboard();
+            renderBookingsTable();
+            renderFleetGrid();
+            renderDriversGrid();
+            populateManualVehicleSelect();
+            loadSettings();
+        });
+
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'sk_bookings') {
+                bookings = getStoredData('sk_bookings', DEFAULT_BOOKINGS);
+                renderDashboard(); renderBookingsTable();
+            }
+            if (event.key === 'sk_cars') {
+                fleet = getStoredData('sk_cars', DEFAULT_FLEET);
+                renderFleetGrid(); renderDashboard(); populateManualVehicleSelect();
+            }
+            if (event.key === 'sk_settings') loadSettings();
+        });
+
+        // --- TAB SWITCHER LOGIC ---
+        function switchTab(tabId) {
+            const tabs = ['dashboard', 'bookings', 'fleet', 'drivers', 'telemetry', 'settings'];
+            tabs.forEach(t => {
+                const section = document.getElementById(`section-${t}`);
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (section) section.classList.toggle('hidden', t !== tabId);
+                if (navBtn) {
+                    if (t === tabId) {
+                        navBtn.className = 'px-4 py-2 rounded-xl text-xs font-semibold transition text-gold-400 bg-slate-800';
+                    } else {
+                        navBtn.className = 'px-4 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white';
+                    }
+                }
+            });
+
+            if (tabId === 'telemetry') {
+                setTimeout(initLeafletMap, 200);
+            }
+        }
+
+        // --- DASHBOARD RENDER & KPI CALCULATION ---
+        function renderDashboard() {
+            // Compute KPIs
+            const totalRevenue = bookings.reduce((sum, b) => b.status === 'Completed' ? sum + Number(b.fare) : sum, 3140);
+            const activeRides = bookings.filter(b => b.status === 'En-Route' || b.status === 'In-Transit').length;
+            const rentedCars = fleet.filter(c => c.status === 'Rented').length;
+            const utilization = fleet.length ? Math.round((rentedCars / fleet.length) * 100) : 0;
+            const activeDrivers = drivers.filter(d => d.status === 'Active' || d.status === 'On Trip').length;
+
+            document.getElementById('kpi-revenue').innerText = `₹${totalRevenue.toLocaleString('en-IN')}`;
+            document.getElementById('kpi-active-rides').innerText = activeRides;
+            document.getElementById('kpi-utilization').innerText = `${utilization}%`;
+            document.getElementById('kpi-utilization-bar').style.width = `${utilization}%`;
+            document.getElementById('kpi-drivers-duty').innerText = `${activeDrivers} / ${drivers.length}`;
+
+            // Dashboard Recent Bookings Table
+            const tbody = document.getElementById('dashboard-recent-bookings-tbody');
+            tbody.innerHTML = bookings.slice(0, 5).map(b => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-3 font-mono font-bold text-gold-400">${b.id}</td>
+                    <td class="p-3 font-semibold text-white">${b.customerName}</td>
+                    <td class="p-3 text-slate-300">${b.pickup} ➔ ${b.drop}</td>
+                    <td class="p-3 text-slate-300">${b.vehicle}</td>
+                    <td class="p-3">${getStatusBadge(b.status)}</td>
+                    <td class="p-3 font-extrabold text-white">₹${b.fare}</td>
+                </tr>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function getStatusBadge(status) {
+            const styles = {
+                'Confirmed': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                'En-Route': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+                'In-Transit': 'bg-cyanAccent/20 text-cyanAccent border-cyanAccent/30',
+                'Completed': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                'Cancelled': 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+            };
+            return `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${styles[status] || 'bg-slate-800 text-slate-300'}">${status}</span>`;
+        }
+
+        // --- BOOKINGS TABLE MANAGEMENT ---
+        function renderBookingsTable() {
+            const search = document.getElementById('booking-search-input')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('booking-status-filter')?.value || 'ALL';
+
+            const filtered = bookings.filter(b => {
+                const matchesSearch = b.id.toLowerCase().includes(search) || b.customerName.toLowerCase().includes(search) || b.phone.includes(search);
+                const matchesStatus = statusFilter === 'ALL' || b.status === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
+            const tbody = document.getElementById('bookings-table-tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = filtered.map(b => `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="p-3.5 font-mono font-bold text-gold-400">${b.id}</td>
+                    <td class="p-3.5">
+                        <span class="font-bold text-white block">${b.customerName}</span>
+                        <span class="text-[11px] text-slate-400">${b.phone}</span>
+                    </td>
+                    <td class="p-3.5">
+                        <span class="text-white block font-medium">${b.pickup} ➔ ${b.drop}</span>
+                        <span class="text-[10px] text-slate-400">${b.datetime}</span>
+                    </td>
+                    <td class="p-3.5 text-slate-300">${b.vehicle}</td>
+                    <td class="p-3.5">
+                        <select onchange="updateBookingDriver('${b.id}', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1 text-[11px] text-white">
+                            ${drivers.map(d => `<option value="${d.name}" ${b.driver === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="p-3.5 font-extrabold text-gold-400">₹${b.fare}</td>
+                    <td class="p-3.5">
+                        <select onchange="updateBookingStatus('${b.id}', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1 text-[11px] text-white">
+                            <option value="Confirmed" ${b.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                            <option value="En-Route" ${b.status === 'En-Route' ? 'selected' : ''}>En-Route</option>
+                            <option value="In-Transit" ${b.status === 'In-Transit' ? 'selected' : ''}>In-Transit</option>
+                            <option value="Completed" ${b.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                            <option value="Cancelled" ${b.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                        </select>
+                    </td>
+                    <td class="p-3.5 text-right">
+                        <button onclick="deleteBooking('${b.id}')" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function updateBookingStatus(id, newStatus) {
+            const b = bookings.find(item => item.id === id);
+            if (b) {
+                b.status = newStatus;
+                setStoredData('sk_bookings', bookings);
+                renderDashboard();
+                renderBookingsTable();
+            }
+        }
+
+        function updateBookingDriver(id, newDriver) {
+            const b = bookings.find(item => item.id === id);
+            if (b) {
+                b.driver = newDriver;
+                setStoredData('sk_bookings', bookings);
+                renderBookingsTable();
+            }
+        }
+
+        function deleteBooking(id) {
+            bookings = bookings.filter(b => b.id !== id);
+            setStoredData('sk_bookings', bookings);
+            renderDashboard();
+            renderBookingsTable();
+        }
+
+        // --- FLEET GRID MANAGEMENT ---
+        function renderFleetGrid() {
+            const container = document.getElementById('fleet-inventory-grid');
+            if (!container) return;
+
+            container.innerHTML = fleet.map(car => `
+                <div class="glass-panel rounded-2xl p-5 border border-slate-800 space-y-3">
+                    <div class="h-36 w-full rounded-xl overflow-hidden relative">
+                        <img src="${car.image}" alt="${car.name}" class="w-full h-full object-cover">
+                        <span class="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-black/80 text-gold-400 font-extrabold text-xs">₹${car.ratePerKm}/km</span>
+                    </div>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-base font-bold text-white">${car.name}</h3>
+                            <span class="text-xs text-slate-400">${car.category} • ${car.seats} Seats</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${car.status === 'Available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'} border border-slate-700">${car.status}</span>
+                    </div>
+                    <div class="pt-2 flex justify-between items-center border-t border-slate-800">
+                        <button onclick="editCar('${car.id}')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-white">Edit Pricing</button>
+                        <button onclick="deleteCar('${car.id}')" class="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400 border border-rose-500/30">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function openAddCarModal() {
+            document.getElementById('modal-car-title').innerText = 'Add New Luxury Vehicle';
+            document.getElementById('form-car').reset();
+            document.getElementById('car-form-id').value = '';
+            document.getElementById('modal-car').classList.remove('hidden');
+        }
+
+        function handleCarSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('car-form-id').value || `car-${Date.now()}`;
+            const carData = {
+                id: id,
+                name: document.getElementById('car-name').value,
+                ratePerKm: Number(document.getElementById('car-rate').value),
+                seats: Number(document.getElementById('car-seats').value),
+                category: document.getElementById('car-category').value,
+                status: document.getElementById('car-status').value,
+                image: document.getElementById('car-image').value
+            };
+
+            const existingIndex = fleet.findIndex(c => c.id === id);
+            if (existingIndex > -1) {
+                fleet[existingIndex] = carData;
+            } else {
+                fleet.push(carData);
+            }
+
+            setStoredData('sk_cars', fleet);
+            renderFleetGrid();
+            renderDashboard();
+            populateManualVehicleSelect();
+            closeModal('modal-car');
+        }
+
+        function editCar(id) {
+            const car = fleet.find(c => c.id === id);
+            if (!car) return;
+
+            document.getElementById('modal-car-title').innerText = 'Edit Vehicle Details';
+            document.getElementById('car-form-id').value = car.id;
+            document.getElementById('car-name').value = car.name;
+            document.getElementById('car-rate').value = car.ratePerKm;
+            document.getElementById('car-seats').value = car.seats;
+            document.getElementById('car-category').value = car.category;
+            document.getElementById('car-status').value = car.status;
+            document.getElementById('car-image').value = car.image;
+
+            document.getElementById('modal-car').classList.remove('hidden');
+        }
+
+        function deleteCar(id) {
+            fleet = fleet.filter(c => c.id !== id);
+            setStoredData('sk_cars', fleet);
+            renderFleetGrid();
+            renderDashboard();
+            populateManualVehicleSelect();
+        }
+
+        // --- DRIVER ROSTER MANAGEMENT ---
+        function renderDriversGrid() {
+            const container = document.getElementById('drivers-roster-grid');
+            if (!container) return;
+
+            container.innerHTML = drivers.map(d => `
+                <div class="glass-panel rounded-2xl p-5 border border-slate-800 space-y-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-gold-600 to-gold-400 text-black font-extrabold text-lg flex items-center justify-center">
+                            ${d.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-white">${d.name}</h3>
+                            <span class="text-xs text-gold-400 font-semibold">${d.phone}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1 text-xs text-slate-300 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                        <div><span class="text-slate-500">License Plate:</span> ${d.plate}</div>
+                        <div><span class="text-slate-500">Duty PIN:</span> <span class="font-mono font-bold text-white">${d.pin}</span></div>
+                    </div>
+                    <div class="flex justify-between items-center pt-2">
+                        <select onchange="updateDriverStatus('${d.id}', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white">
+                            <option value="Active" ${d.status === 'Active' ? 'selected' : ''}>Active / On Duty</option>
+                            <option value="On Trip" ${d.status === 'On Trip' ? 'selected' : ''}>On Trip</option>
+                            <option value="Off Duty" ${d.status === 'Off Duty' ? 'selected' : ''}>Off Duty</option>
+                        </select>
+                        <button onclick="deleteDriver('${d.id}')" class="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function openAddDriverModal() {
+            document.getElementById('form-driver').reset();
+            document.getElementById('modal-driver').classList.remove('hidden');
+        }
+
+        function handleDriverSubmit(e) {
+            e.preventDefault();
+            const newDriver = {
+                id: `drv-${Date.now()}`,
+                name: document.getElementById('driver-name').value,
+                phone: document.getElementById('driver-phone').value,
+                pin: document.getElementById('driver-pin').value,
+                plate: document.getElementById('driver-plate').value,
+                status: document.getElementById('driver-status').value
+            };
+
+            drivers.push(newDriver);
+            setStoredData('sk_drivers', drivers);
+            renderDriversGrid();
+            renderDashboard();
+            closeModal('modal-driver');
+        }
+
+        function updateDriverStatus(id, newStatus) {
+            const d = drivers.find(drv => drv.id === id);
+            if (d) {
+                d.status = newStatus;
+                setStoredData('sk_drivers', drivers);
+                renderDriversGrid();
+                renderDashboard();
+            }
+        }
+
+        function deleteDriver(id) {
+            drivers = drivers.filter(d => d.id !== id);
+            setStoredData('sk_drivers', drivers);
+            renderDriversGrid();
+            renderDashboard();
+        }
+
+        // --- MANUAL BOOKING CREATOR ---
+        function openManualBookingModal() {
+            document.getElementById('form-manual-booking').reset();
+            document.getElementById('modal-manual-booking').classList.remove('hidden');
+        }
+
+        function populateManualVehicleSelect() {
+            const sel = document.getElementById('manual-vehicle');
+            if (!sel) return;
+            sel.innerHTML = fleet.map(c => `<option value="${c.name}">${c.name} (₹${c.ratePerKm}/km)</option>`).join('');
+        }
+
+        function handleManualBookingSubmit(e) {
+            e.preventDefault();
+            const newBooking = {
+                id: `SK-${Math.floor(1000 + Math.random() * 9000)}`,
+                customerName: document.getElementById('manual-name').value,
+                phone: document.getElementById('manual-phone').value,
+                pickup: document.getElementById('manual-pickup').value,
+                drop: document.getElementById('manual-drop').value,
+                datetime: 'Immediate Reservation',
+                vehicle: document.getElementById('manual-vehicle').value,
+                driver: drivers.length ? drivers[0].name : 'Ramesh Patel',
+                status: 'Confirmed',
+                fare: Number(document.getElementById('manual-fare').value)
+            };
+
+            bookings.unshift(newBooking);
+            setStoredData('sk_bookings', bookings);
+            renderDashboard();
+            renderBookingsTable();
+            closeModal('modal-manual-booking');
+        }
+
+        // --- LEAFLET GPS RADAR MAP ---
+        function initLeafletMap() {
+            if (map) {
+                map.invalidateSize();
+                return;
+            }
+
+            // Coordinates for Anand -> Vadodara -> Ahmedabad Highway Segment
+            const startLat = 22.5645; // Anand
+            const startLng = 72.9289;
+
+            map = L.map('radar-map').setView([startLat, startLng], 11);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap & &copy; CARTO',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add Custom Marker
+            const customIcon = L.divIcon({
+                className: 'custom-car-marker',
+                html: `<div style="background-color: #EAB308; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #000; box-shadow: 0 0 12px #EAB308;"></div>`,
+                iconSize: [16, 16]
+            });
+
+            mapMarker = L.marker([startLat, startLng], { icon: customIcon }).addTo(map)
+                .bindPopup('<b style="color: #000;">SK TRAVELS Active Trip</b><br>GJ-07-SK-8899')
+                .openPopup();
+
+            // Simulate Movement along Route
+            let delta = 0;
+            setInterval(() => {
+                delta += 0.0015;
+                const newLat = startLat + Math.sin(delta) * 0.04;
+                const newLng = startLng + Math.cos(delta) * 0.04;
+                if (mapMarker) {
+                    mapMarker.setLatLng([newLat, newLng]);
+                }
+            }, 3000);
+        }
+
+        // --- SYSTEM SETTINGS & EXPORT ---
+        function loadSettings() {
+            const settings = getStoredData('sk_settings', {});
+            const phone = document.getElementById('setting-phone');
+            const email = document.getElementById('setting-email');
+            const address = document.getElementById('setting-address');
+            if (phone && settings.phone) phone.value = settings.phone;
+            if (email && settings.email) email.value = settings.email;
+            if (address && settings.address) address.value = settings.address;
+        }
+
+        function saveSettings() {
+            const settings = {
+                phone: document.getElementById('setting-phone').value.trim(),
+                email: document.getElementById('setting-email').value.trim(),
+                address: document.getElementById('setting-address').value.trim()
+            };
+            setStoredData('sk_settings', settings);
+            alert('Business profile saved. The customer website will use these details when opened on the same website origin/browser.');
+        }
+
+        function exportBookingsJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bookings, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "SK_Travels_Bookings_Backup.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function resetSystemData() {
+            if (confirm('Reset system data to sample default values?')) {
+                localStorage.removeItem('sk_cars');
+                localStorage.removeItem('sk_drivers');
+                localStorage.removeItem('sk_bookings');
+                fleet = DEFAULT_FLEET;
+                drivers = DEFAULT_DRIVERS;
+                bookings = DEFAULT_BOOKINGS;
+                setStoredData('sk_cars', fleet);
+                setStoredData('sk_drivers', drivers);
+                setStoredData('sk_bookings', bookings);
+                renderDashboard();
+                renderBookingsTable();
+                renderFleetGrid();
+                renderDriversGrid();
+                populateManualVehicleSelect();
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // --- BACKGROUND CANVAS ANIMATION ---
+        function initCanvas() {
+            const canvas = document.getElementById('bg-canvas');
+            const ctx = canvas.getContext('2d');
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const particles = [];
+            for (let i = 0; i < 40; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.5 + 0.5,
+                    vx: (Math.random() - 0.5) * 0.2,
+                    vy: (Math.random() - 0.5) * 0.2,
+                    alpha: Math.random() * 0.4 + 0.1
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0) p.x = canvas.width;
+                    if (p.x > canvas.width) p.x = 0;
+                    if (p.y < 0) p.y = canvas.height;
+                    if (p.y > canvas.height) p.y = 0;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(234, 179, 8, ${p.alpha})`;
+                    ctx.fill();
+                });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+    </script>
+
+    <div style="position:fixed;right:12px;bottom:12px;z-index:9999;background:#0b1220;border:1px solid #eab308;border-radius:12px;padding:9px 12px;display:flex;gap:12px;font:600 12px Arial;box-shadow:0 8px 24px #0008">
+      <a href="customer.html" style="color:#facc15;text-decoration:none">Customer</a>
+      <a href="owner.html" style="color:#facc15;text-decoration:none">Owner Admin</a>
+      <a href="drivers.html" style="color:#facc15;text-decoration:none">Driver</a>
+    </div>
+
+</body>
+</html>
